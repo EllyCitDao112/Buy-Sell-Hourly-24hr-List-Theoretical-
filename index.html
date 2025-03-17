@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Binance Live Order Book & 24h Stats</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -13,12 +14,16 @@
         .positive { color: green; }  /* Positive price change */
         .negative { color: red; }    /* Negative price change */
         caption { font-size: 1.2em; margin-bottom: 10px; font-weight: bold; }
+        canvas { max-width: 100%; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <h1>Live Binance Order Book Trading Signals</h1>
     <p id="lastUpdated">Last updated: never</p>
+
+    <!-- Chart Container -->
+    <canvas id="priceChart"></canvas>
 
     <table id="tradingTable">
         <caption>Hourly Buy/Sell Recommendations with 24h Stats</caption>
@@ -37,6 +42,7 @@
                 <th>Sell Support</th>
                 <th>Sell Resistance</th>
                 <th>24h Volume (Sell)</th>
+                <th>Rationale</th> <!-- New column for rational explanation -->
             </tr>
         </thead>
         <tbody>
@@ -45,7 +51,35 @@
     </table>
 
     <script>
-        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"]; // Assets to track
+        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT"]; // Selected assets for chart
+
+        let chartData = {
+            labels: [],
+            datasets: assets.map(asset => ({
+                label: asset.replace("USDT", ""),
+                borderColor: getRandomColor(),
+                data: [],
+                fill: false
+            }))
+        };
+
+        let chartConfig = {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Time (UTC)' } },
+                    y: { title: { display: true, text: 'Price (USDT)' } }
+                }
+            }
+        };
+
+        let priceChart = new Chart(document.getElementById('priceChart'), chartConfig);
+
+        function getRandomColor() {
+            return `hsl(${Math.random() * 360}, 100%, 50%)`;
+        }
 
         async function fetchMarketData(symbol) {
             try {
@@ -59,13 +93,13 @@
 
                 return {
                     symbol,
-                    buySupport: parseFloat(orderBookData.bids[0][0]),  // Highest bid price
-                    buyResistance: parseFloat(orderBookData.bids[9][0]), // 10th highest bid
-                    sellSupport: parseFloat(orderBookData.asks[9][0]),  // 10th lowest ask
-                    sellResistance: parseFloat(orderBookData.asks[0][0]), // Lowest ask price
-                    currentPrice: parseFloat(tickerData.lastPrice),  // Current market price
-                    priceChange: parseFloat(tickerData.priceChangePercent), // 24h price change %
-                    volume: parseFloat(tickerData.volume).toFixed(2) // 24-hour trading volume
+                    buySupport: parseFloat(orderBookData.bids[0][0]),
+                    buyResistance: parseFloat(orderBookData.bids[9][0]),
+                    sellSupport: parseFloat(orderBookData.asks[9][0]),
+                    sellResistance: parseFloat(orderBookData.asks[0][0]),
+                    currentPrice: parseFloat(tickerData.lastPrice),
+                    priceChange: parseFloat(tickerData.priceChangePercent),
+                    volume: parseFloat(tickerData.volume).toFixed(2)
                 };
             } catch (error) {
                 console.error(`Error fetching market data for ${symbol}:`, error);
@@ -73,16 +107,35 @@
             }
         }
 
+        function determineRationale(data) {
+            if (!data) return "No data available";
+
+            let rationale = "";
+            if (data.priceChange > 1 && data.buySupport > data.sellSupport) {
+                rationale = "Strong bullish momentum with solid support.";
+            } else if (data.priceChange < -1 && data.sellResistance < data.buyResistance) {
+                rationale = "Bearish trend with weak resistance.";
+            } else if (data.volume > 500000) {
+                rationale = "High trading volume, potential breakout.";
+            } else {
+                rationale = "Neutral market conditions.";
+            }
+            return rationale;
+        }
+
         async function updateTradingTable() {
             const tbody = document.querySelector("#tradingTable tbody");
             tbody.innerHTML = "";  // Clear table
 
-            const results = await Promise.all(assets.map(fetchMarketData)); // Fetch all market data
+            const results = await Promise.all(assets.map(fetchMarketData));
 
             const currentHour = new Date().getUTCHours();
             results.forEach((data, index) => {
-                if (!data) return;  // Skip if error
+                if (!data) return;
 
+                const rationale = determineRationale(data);
+
+                // Update table
                 const row = document.createElement("tr");
                 row.innerHTML = `
                     <td>${(currentHour + index) % 24}:00</td>
@@ -98,127 +151,25 @@
                     <td class="sell">$${data.sellSupport.toFixed(2)}</td>
                     <td class="sell">$${data.sellResistance.toFixed(2)}</td>
                     <td class="sell">${data.volume}</td>
+                    <td>${rationale}</td> <!-- Add rationale here -->
                 `;
                 tbody.appendChild(row);
+
+                // Update chart
+                const timeLabel = new Date().toLocaleTimeString();
+                if (chartData.labels.length >= 20) {
+                    chartData.labels.shift();
+                    chartData.datasets.forEach(dataset => dataset.data.shift());
+                }
+                chartData.labels.push(timeLabel);
+                chartData.datasets.find(ds => ds.label === data.symbol.replace("USDT", "")).data.push(data.currentPrice);
             });
 
+            priceChart.update();
             document.getElementById("lastUpdated").textContent = "Last updated: " + new Date().toLocaleString();
         }
 
-        updateTradingTable(); // Initial data load
-        setInterval(updateTradingTable, 900000); // Update every 15 minutes
-
-    </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Binance Live Order Book & 24h Stats</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-        th { background-color: #f0f0f0; }
-        .buy { background-color: #d4f8d4; color: green; font-weight: bold; } /* Green Buy */
-        .sell { background-color: #f8d4d4; color: red; font-weight: bold; }  /* Red Sell */
-        .positive { color: green; }  /* Positive price change */
-        .negative { color: red; }    /* Negative price change */
-        caption { font-size: 1.2em; margin-bottom: 10px; font-weight: bold; }
-    </style>
-</head>
-<body>
-
-    <h1>Live Binance Order Book Trading Signals</h1>
-    <p id="lastUpdated">Last updated: never</p>
-
-    <table id="tradingTable">
-        <caption>Hourly Buy/Sell Recommendations with 24h Stats</caption>
-        <thead>
-            <tr>
-                <th>Hour (UTC)</th>
-                <th>Buy Asset</th>
-                <th>Current Price</th>
-                <th>24h Change</th>
-                <th>Buy Support</th>
-                <th>Buy Resistance</th>
-                <th>24h Volume (Buy)</th>
-                <th>Sell Asset</th>
-                <th>Current Price</th>
-                <th>24h Change</th>
-                <th>Sell Support</th>
-                <th>Sell Resistance</th>
-                <th>24h Volume (Sell)</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Data updates every 15 minutes -->
-        </tbody>
-    </table>
-
-    <script>
-        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"]; // Assets to track
-
-        async function fetchMarketData(symbol) {
-            try {
-                const [orderBookRes, tickerRes] = await Promise.all([
-                    fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`),
-                    fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
-                ]);
-
-                const orderBookData = await orderBookRes.json();
-                const tickerData = await tickerRes.json();
-
-                return {
-                    symbol,
-                    buySupport: parseFloat(orderBookData.bids[0][0]),  // Highest bid price
-                    buyResistance: parseFloat(orderBookData.bids[9][0]), // 10th highest bid
-                    sellSupport: parseFloat(orderBookData.asks[9][0]),  // 10th lowest ask
-                    sellResistance: parseFloat(orderBookData.asks[0][0]), // Lowest ask price
-                    currentPrice: parseFloat(tickerData.lastPrice),  // Current market price
-                    priceChange: parseFloat(tickerData.priceChangePercent), // 24h price change %
-                    volume: parseFloat(tickerData.volume).toFixed(2) // 24-hour trading volume
-                };
-            } catch (error) {
-                console.error(`Error fetching market data for ${symbol}:`, error);
-                return null;
-            }
-        }
-
-        async function updateTradingTable() {
-            const tbody = document.querySelector("#tradingTable tbody");
-            tbody.innerHTML = "";  // Clear table
-
-            const results = await Promise.all(assets.map(fetchMarketData)); // Fetch all market data
-
-            const currentHour = new Date().getUTCHours();
-            results.forEach((data, index) => {
-                if (!data) return;  // Skip if error
-
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${(currentHour + index) % 24}:00</td>
-                    <td class="buy">${data.symbol.replace("USDT", "")}</td>
-                    <td class="buy">$${data.currentPrice.toFixed(2)}</td>
-                    <td class="${data.priceChange >= 0 ? 'positive' : 'negative'}">${data.priceChange.toFixed(2)}%</td>
-                    <td class="buy">$${data.buySupport.toFixed(2)}</td>
-                    <td class="buy">$${data.buyResistance.toFixed(2)}</td>
-                    <td class="buy">${data.volume}</td>
-                    <td class="sell">${data.symbol.replace("USDT", "")}</td>
-                    <td class="sell">$${data.currentPrice.toFixed(2)}</td>
-                    <td class="${data.priceChange >= 0 ? 'positive' : 'negative'}">${data.priceChange.toFixed(2)}%</td>
-                    <td class="sell">$${data.sellSupport.toFixed(2)}</td>
-                    <td class="sell">$${data.sellResistance.toFixed(2)}</td>
-                    <td class="sell">${data.volume}</td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            document.getElementById("lastUpdated").textContent = "Last updated: " + new Date().toLocaleString();
-        }
-
-        updateTradingTable(); // Initial data load
+        updateTradingTable();
         setInterval(updateTradingTable, 900000); // Update every 15 minutes
 
     </script>

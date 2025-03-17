@@ -1,113 +1,219 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Theoretical 24‑Hour Crypto Trading Schedule</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background-color: #f0f0f0; }
-    caption { font-size: 1.2em; margin-bottom: 10px; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Binance Live Order Book & 24h Volume</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background-color: #f0f0f0; }
+        .buy { background-color: #d4f8d4; color: green; font-weight: bold; } /* Green Buy */
+        .sell { background-color: #f8d4d4; color: red; font-weight: bold; }  /* Red Sell */
+        caption { font-size: 1.2em; margin-bottom: 10px; font-weight: bold; }
+    </style>
 </head>
 <body>
 
-  <h1>Theoretical 24‑Hour Crypto Trading Schedule</h1>
-  <p id="lastUpdated">Last updated: never</p>
+    <h1>Live Binance Order Book Trading Signals</h1>
+    <p id="lastUpdated">Last updated: never</p>
 
-  <table id="tradingTable">
-    <caption>Hourly Buy/Sell Recommendations (UTC)</caption>
-    <thead>
-      <tr>
-        <th>Hour</th>
-        <th>Buy Asset</th>
-        <th>Buy Support</th>
-        <th>Buy Resistance</th>
-        <th>Sell Asset</th>
-        <th>Sell Support</th>
-        <th>Sell Resistance</th>
-        <th>Rationale</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Rows will be populated by JavaScript -->
-    </tbody>
-  </table>
+    <table id="tradingTable">
+        <caption>Hourly Buy/Sell Recommendations with 24h Volume</caption>
+        <thead>
+            <tr>
+                <th>Hour (UTC)</th>
+                <th>Buy Asset</th>
+                <th>Buy Support</th>
+                <th>Buy Resistance</th>
+                <th>24h Volume (Buy)</th>
+                <th>Sell Asset</th>
+                <th>Sell Support</th>
+                <th>Sell Resistance</th>
+                <th>24h Volume (Sell)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data updates every 15 minutes -->
+        </tbody>
+    </table>
 
-  <script>
-    // Initial theoretical data for each hour
-    const tradingData = [
-      { hour: "00:00", buyAsset: "ETH", buySupport: 1900, buyRes: 1950, sellAsset: "BTC", sellSupport: 82500, sellRes: 83000, rationale: "ETH expected to bounce from support; BTC facing resistance." },
-      { hour: "01:00", buyAsset: "BNB", buySupport: 610, buyRes: 630, sellAsset: "DOGE", sellSupport: 0.27, sellRes: 0.29, rationale: "BNB accumulating; DOGE sell walls present." },
-      { hour: "02:00", buyAsset: "SOL", buySupport: 126, buyRes: 130, sellAsset: "AVAX", sellSupport: 12.5, sellRes: 13.0, rationale: "SOL buy walls strong; AVAX sell orders increasing." },
-      { hour: "03:00", buyAsset: "MATIC", buySupport: 0.70, buyRes: 0.75, sellAsset: "LTC", sellSupport: 87, sellRes: 90, rationale: "MATIC demand rising; LTC under selling pressure." },
-      { hour: "04:00", buyAsset: "XRP", buySupport: 0.48, buyRes: 0.50, sellAsset: "DOT", sellSupport: 4.10, sellRes: 4.25, rationale: "XRP liquidity up; DOT sell orders mounting." },
-      { hour: "05:00", buyAsset: "ADA", buySupport: 0.68, buyRes: 0.72, sellAsset: "BCH", sellSupport: 155, sellRes: 160, rationale: "ADA near support; BCH has heavy asks." },
-      { hour: "06:00", buyAsset: "BTC", buySupport: 82000, buyRes: 82500, sellAsset: "ETH", sellSupport: 1930, sellRes: 1970, rationale: "BTC rebound expected; ETH taken for profit." },
-      { hour: "07:00", buyAsset: "LINK", buySupport: 12.8, buyRes: 13.2, sellAsset: "UNI", sellSupport: 6.00, sellRes: 6.20, rationale: "LINK bullish; UNI facing resistance." },
-      { hour: "08:00", buyAsset: "AVAX", buySupport: 12.6, buyRes: 13.2, sellAsset: "SHIB", sellSupport: 0.0000090, sellRes: 0.0000100, rationale: "AVAX breaking resistance; SHIB sell pressure high." },
-      { hour: "09:00", buyAsset: "ETH", buySupport: 1920, buyRes: 1960, sellAsset: "DOGE", sellSupport: 0.28, sellRes: 0.30, rationale: "ETH accumulation; DOGE appears overbought." },
-      { hour: "10:00", buyAsset: "BNB", buySupport: 615, buyRes: 635, sellAsset: "SOL", sellSupport: 125, sellRes: 130, rationale: "BNB breakout strong; SOL heavy selling observed." },
-      { hour: "11:00", buyAsset: "DOT", buySupport: 4.05, buyRes: 4.20, sellAsset: "LTC", sellSupport: 88, sellRes: 91, rationale: "DOT bouncing from support; LTC weak bids." },
-      { hour: "12:00", buyAsset: "BTC", buySupport: 83000, buyRes: 83500, sellAsset: "ADA", sellSupport: 0.70, sellRes: 0.73, rationale: "BTC gains momentum; ADA meets resistance." },
-      { hour: "13:00", buyAsset: "UNI", buySupport: 5.90, buyRes: 6.10, sellAsset: "MATIC", sellSupport: 0.72, sellRes: 0.76, rationale: "UNI demand rising; MATIC sell walls increasing." },
-      { hour: "14:00", buyAsset: "ETH", buySupport: 1940, buyRes: 1980, sellAsset: "AVAX", sellSupport: 12.80, sellRes: 13.20, rationale: "ETH strong support; AVAX hits resistance." },
-      { hour: "15:00", buyAsset: "SOL", buySupport: 124, buyRes: 128, sellAsset: "DOGE", sellSupport: 0.27, sellRes: 0.29, rationale: "SOL volume spike suggests buy; DOGE overbought." },
-      { hour: "16:00", buyAsset: "XRP", buySupport: 0.47, buyRes: 0.50, sellAsset: "BNB", sellSupport: 610, sellRes: 630, rationale: "XRP liquidity surge; BNB profit-taking." },
-      { hour: "17:00", buyAsset: "LINK", buySupport: 12.70, buyRes: 13.10, sellAsset: "BTC", sellSupport: 82500, sellRes: 83000, rationale: "LINK support forming; BTC correction anticipated." },
-      { hour: "18:00", buyAsset: "MATIC", buySupport: 0.69, buyRes: 0.74, sellAsset: "ADA", sellSupport: 0.68, sellRes: 0.72, rationale: "MATIC bullish; ADA under supply pressure." },
-      { hour: "19:00", buyAsset: "BNB", buySupport: 615, buyRes: 635, sellAsset: "UNI", sellSupport: 6.00, sellRes: 6.20, rationale: "BNB high volume; UNI significant sell orders." },
-      { hour: "20:00", buyAsset: "ETH", buySupport: 1960, buyRes: 2000, sellAsset: "SOL", sellSupport: 125, sellRes: 130, rationale: "ETH holds support; SOL appears to peak." },
-      { hour: "21:00", buyAsset: "BTC", buySupport: 83000, buyRes: 83500, sellAsset: "DOT", sellSupport: 4.05, sellRes: 4.20, rationale: "BTC recovers; DOT retraces." },
-      { hour: "22:00", buyAsset: "AVAX", buySupport: 12.70, buyRes: 13.10, sellAsset: "XRP", sellSupport: 0.48, sellRes: 0.50, rationale: "AVAX buy orders intensify; XRP under sell pressure." },
-      { hour: "23:00", buyAsset: "BNB", buySupport: 615, buyRes: 635, sellAsset: "ETH", sellSupport: 1950, sellRes: 1990, rationale: "BNB closes strong; ETH may face late sell-off." }
-    ];
+    <script>
+        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"]; // Assets to track
 
-    // Function to populate the table with the trading data
-    function populateTable() {
-      const tbody = document.querySelector("#tradingTable tbody");
-      tbody.innerHTML = ""; // Clear existing rows
-      
-      tradingData.forEach(item => {
-        // Create a new row
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${item.hour}</td>
-          <td>${item.buyAsset}</td>
-          <td>$${item.buySupport.toFixed(2)}</td>
-          <td>$${item.buyRes.toFixed(2)}</td>
-          <td>${item.sellAsset}</td>
-          <td>$${item.sellSupport.toFixed(2)}</td>
-          <td>$${item.sellRes.toFixed(2)}</td>
-          <td>${item.rationale}</td>
-        `;
-        tbody.appendChild(row);
-      });
-      
-      // Update last updated time
-      document.getElementById("lastUpdated").textContent = "Last updated: " + new Date().toLocaleString();
-    }
+        async function fetchOrderBook(symbol) {
+            try {
+                const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`);
+                const data = await response.json();
+                return {
+                    symbol,
+                    buySupport: parseFloat(data.bids[0][0]),  // Highest bid price
+                    buyResistance: parseFloat(data.bids[9][0]), // 10th highest bid
+                    sellSupport: parseFloat(data.asks[9][0]),  // 10th lowest ask
+                    sellResistance: parseFloat(data.asks[0][0]) // Lowest ask price
+                };
+            } catch (error) {
+                console.error(`Error fetching order book for ${symbol}:`, error);
+                return null;
+            }
+        }
 
-    // Function to simulate live data updates (slightly adjust support/resistance values)
-    function updateData() {
-      tradingData.forEach(item => {
-        // Apply a random factor (±0.5% change) to support and resistance prices for simulation
-        const factor = 1 + (Math.random() * 0.01 - 0.005);
-        item.buySupport = parseFloat((item.buySupport * factor).toFixed(2));
-        item.buyRes = parseFloat((item.buyRes * factor).toFixed(2));
-        item.sellSupport = parseFloat((item.sellSupport * factor).toFixed(2));
-        item.sellRes = parseFloat((item.sellRes * factor).toFixed(2));
-      });
-      populateTable();
-    }
+        async function fetch24hVolume(symbol) {
+            try {
+                const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+                const data = await response.json();
+                return parseFloat(data.volume).toFixed(2); // 24-hour volume
+            } catch (error) {
+                console.error(`Error fetching 24h volume for ${symbol}:`, error);
+                return "N/A";
+            }
+        }
 
-    // Initial table population
-    populateTable();
+        async function updateTradingTable() {
+            const tbody = document.querySelector("#tradingTable tbody");
+            tbody.innerHTML = "";  // Clear table
 
-    // Set interval to update every 15 minutes (900,000 milliseconds)
-    setInterval(updateData, 900000);
-  </script>
+            const results = await Promise.all(assets.map(async (symbol) => {
+                const orderBookData = await fetchOrderBook(symbol);
+                const volume = await fetch24hVolume(symbol);
+                return { ...orderBookData, volume };
+            }));
 
+            const currentHour = new Date().getUTCHours();
+            results.forEach((data, index) => {
+                if (!data) return;  // Skip if error
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${(currentHour + index) % 24}:00</td>
+                    <td class="buy">${data.symbol.replace("USDT", "")}</td>
+                    <td class="buy">$${data.buySupport.toFixed(2)}</td>
+                    <td class="buy">$${data.buyResistance.toFixed(2)}</td>
+                    <td class="buy">${data.volume}</td>
+                    <td class="sell">${data.symbol.replace("USDT", "")}</td>
+                    <td class="sell">$${data.sellSupport.toFixed(2)}</td>
+                    <td class="sell">$${data.sellResistance.toFixed(2)}</td>
+                    <td class="sell">${data.volume}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById("lastUpdated").textContent = "Last updated: " + new Date().toLocaleString();
+        }
+
+        updateTradingTable(); // Initial data load
+        setInterval(updateTradingTable, 900000); // Update every 15 minutes
+
+    </script>
 </body>
-</html>
+          </html>
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Binance Live Order Book & 24h Volume</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background-color: #f0f0f0; }
+        .buy { background-color: #d4f8d4; color: green; font-weight: bold; } /* Green Buy */
+        .sell { background-color: #f8d4d4; color: red; font-weight: bold; }  /* Red Sell */
+        caption { font-size: 1.2em; margin-bottom: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>Live Binance Order Book Trading Signals</h1>
+    <p id="lastUpdated">Last updated: never</p>
+
+    <table id="tradingTable">
+        <caption>Hourly Buy/Sell Recommendations with 24h Volume</caption>
+        <thead>
+            <tr>
+                <th>Hour (UTC)</th>
+                <th>Buy Asset</th>
+                <th>Buy Support</th>
+                <th>Buy Resistance</th>
+                <th>24h Volume (Buy)</th>
+                <th>Sell Asset</th>
+                <th>Sell Support</th>
+                <th>Sell Resistance</th>
+                <th>24h Volume (Sell)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data updates every 15 minutes -->
+        </tbody>
+    </table>
+
+    <script>
+        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"]; // Assets to track
+
+        async function fetchOrderBook(symbol) {
+            try {
+                const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`);
+                const data = await response.json();
+                return {
+                    symbol,
+                    buySupport: parseFloat(data.bids[0][0]),  // Highest bid price
+                    buyResistance: parseFloat(data.bids[9][0]), // 10th highest bid
+                    sellSupport: parseFloat(data.asks[9][0]),  // 10th lowest ask
+                    sellResistance: parseFloat(data.asks[0][0]) // Lowest ask price
+                };
+            } catch (error) {
+                console.error(`Error fetching order book for ${symbol}:`, error);
+                return null;
+            }
+        }
+
+        async function fetch24hVolume(symbol) {
+            try {
+                const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+                const data = await response.json();
+                return parseFloat(data.volume).toFixed(2); // 24-hour volume
+            } catch (error) {
+                console.error(`Error fetching 24h volume for ${symbol}:`, error);
+                return "N/A";
+            }
+        }
+
+        async function updateTradingTable() {
+            const tbody = document.querySelector("#tradingTable tbody");
+            tbody.innerHTML = "";  // Clear table
+
+            const results = await Promise.all(assets.map(async (symbol) => {
+                const orderBookData = await fetchOrderBook(symbol);
+                const volume = await fetch24hVolume(symbol);
+                return { ...orderBookData, volume };
+            }));
+
+            const currentHour = new Date().getUTCHours();
+            results.forEach((data, index) => {
+                if (!data) return;  // Skip if error
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${(currentHour + index) % 24}:00</td>
+                    <td class="buy">${data.symbol.replace("USDT", "")}</td>
+                    <td class="buy">$${data.buySupport.toFixed(2)}</td>
+                    <td class="buy">$${data.buyResistance.toFixed(2)}</td>
+                    <td class="buy">${data.volume}</td>
+                    <td class="sell">${data.symbol.replace("USDT", "")}</td>
+                    <td class="sell">$${data.sellSupport.toFixed(2)}</td>
+                    <td class="sell">$${data.sellResistance.toFixed(2)}</td>
+                    <td class="sell">${data.volume}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById("lastUpdated").textContent = "Last updated: " + new Date().toLocaleString();
+        }
+
+        updateTradingTable(); // Initial data load
+        setInterval(updateTradingTable, 900000); // Update every 15 minutes
+
+    </script>
+</body>
+                  </html>
+      

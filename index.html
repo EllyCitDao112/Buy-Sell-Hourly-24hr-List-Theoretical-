@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Binance Live Order Book & 24h Volume</title>
+    <title>Binance Live Order Book & 24h Stats</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -10,6 +10,8 @@
         th { background-color: #f0f0f0; }
         .buy { background-color: #d4f8d4; color: green; font-weight: bold; } /* Green Buy */
         .sell { background-color: #f8d4d4; color: red; font-weight: bold; }  /* Red Sell */
+        .positive { color: green; }  /* Positive price change */
+        .negative { color: red; }    /* Negative price change */
         caption { font-size: 1.2em; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
@@ -19,15 +21,19 @@
     <p id="lastUpdated">Last updated: never</p>
 
     <table id="tradingTable">
-        <caption>Hourly Buy/Sell Recommendations with 24h Volume</caption>
+        <caption>Hourly Buy/Sell Recommendations with 24h Stats</caption>
         <thead>
             <tr>
                 <th>Hour (UTC)</th>
                 <th>Buy Asset</th>
+                <th>Current Price</th>
+                <th>24h Change</th>
                 <th>Buy Support</th>
                 <th>Buy Resistance</th>
                 <th>24h Volume (Buy)</th>
                 <th>Sell Asset</th>
+                <th>Current Price</th>
+                <th>24h Change</th>
                 <th>Sell Support</th>
                 <th>Sell Resistance</th>
                 <th>24h Volume (Sell)</th>
@@ -41,31 +47,29 @@
     <script>
         const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"]; // Assets to track
 
-        async function fetchOrderBook(symbol) {
+        async function fetchMarketData(symbol) {
             try {
-                const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`);
-                const data = await response.json();
+                const [orderBookRes, tickerRes] = await Promise.all([
+                    fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`),
+                    fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
+                ]);
+
+                const orderBookData = await orderBookRes.json();
+                const tickerData = await tickerRes.json();
+
                 return {
                     symbol,
-                    buySupport: parseFloat(data.bids[0][0]),  // Highest bid price
-                    buyResistance: parseFloat(data.bids[9][0]), // 10th highest bid
-                    sellSupport: parseFloat(data.asks[9][0]),  // 10th lowest ask
-                    sellResistance: parseFloat(data.asks[0][0]) // Lowest ask price
+                    buySupport: parseFloat(orderBookData.bids[0][0]),  // Highest bid price
+                    buyResistance: parseFloat(orderBookData.bids[9][0]), // 10th highest bid
+                    sellSupport: parseFloat(orderBookData.asks[9][0]),  // 10th lowest ask
+                    sellResistance: parseFloat(orderBookData.asks[0][0]), // Lowest ask price
+                    currentPrice: parseFloat(tickerData.lastPrice),  // Current market price
+                    priceChange: parseFloat(tickerData.priceChangePercent), // 24h price change %
+                    volume: parseFloat(tickerData.volume).toFixed(2) // 24-hour trading volume
                 };
             } catch (error) {
-                console.error(`Error fetching order book for ${symbol}:`, error);
+                console.error(`Error fetching market data for ${symbol}:`, error);
                 return null;
-            }
-        }
-
-        async function fetch24hVolume(symbol) {
-            try {
-                const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
-                const data = await response.json();
-                return parseFloat(data.volume).toFixed(2); // 24-hour volume
-            } catch (error) {
-                console.error(`Error fetching 24h volume for ${symbol}:`, error);
-                return "N/A";
             }
         }
 
@@ -73,11 +77,7 @@
             const tbody = document.querySelector("#tradingTable tbody");
             tbody.innerHTML = "";  // Clear table
 
-            const results = await Promise.all(assets.map(async (symbol) => {
-                const orderBookData = await fetchOrderBook(symbol);
-                const volume = await fetch24hVolume(symbol);
-                return { ...orderBookData, volume };
-            }));
+            const results = await Promise.all(assets.map(fetchMarketData)); // Fetch all market data
 
             const currentHour = new Date().getUTCHours();
             results.forEach((data, index) => {
@@ -87,10 +87,14 @@
                 row.innerHTML = `
                     <td>${(currentHour + index) % 24}:00</td>
                     <td class="buy">${data.symbol.replace("USDT", "")}</td>
+                    <td class="buy">$${data.currentPrice.toFixed(2)}</td>
+                    <td class="${data.priceChange >= 0 ? 'positive' : 'negative'}">${data.priceChange.toFixed(2)}%</td>
                     <td class="buy">$${data.buySupport.toFixed(2)}</td>
                     <td class="buy">$${data.buyResistance.toFixed(2)}</td>
                     <td class="buy">${data.volume}</td>
                     <td class="sell">${data.symbol.replace("USDT", "")}</td>
+                    <td class="sell">$${data.currentPrice.toFixed(2)}</td>
+                    <td class="${data.priceChange >= 0 ? 'positive' : 'negative'}">${data.priceChange.toFixed(2)}%</td>
                     <td class="sell">$${data.sellSupport.toFixed(2)}</td>
                     <td class="sell">$${data.sellResistance.toFixed(2)}</td>
                     <td class="sell">${data.volume}</td>
@@ -106,12 +110,12 @@
 
     </script>
 </body>
-          </html>
-  <!DOCTYPE html>
+</html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Binance Live Order Book & 24h Volume</title>
+    <title>Binance Live Order Book & 24h Stats</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -119,6 +123,8 @@
         th { background-color: #f0f0f0; }
         .buy { background-color: #d4f8d4; color: green; font-weight: bold; } /* Green Buy */
         .sell { background-color: #f8d4d4; color: red; font-weight: bold; }  /* Red Sell */
+        .positive { color: green; }  /* Positive price change */
+        .negative { color: red; }    /* Negative price change */
         caption { font-size: 1.2em; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
@@ -128,15 +134,19 @@
     <p id="lastUpdated">Last updated: never</p>
 
     <table id="tradingTable">
-        <caption>Hourly Buy/Sell Recommendations with 24h Volume</caption>
+        <caption>Hourly Buy/Sell Recommendations with 24h Stats</caption>
         <thead>
             <tr>
                 <th>Hour (UTC)</th>
                 <th>Buy Asset</th>
+                <th>Current Price</th>
+                <th>24h Change</th>
                 <th>Buy Support</th>
                 <th>Buy Resistance</th>
                 <th>24h Volume (Buy)</th>
                 <th>Sell Asset</th>
+                <th>Current Price</th>
+                <th>24h Change</th>
                 <th>Sell Support</th>
                 <th>Sell Resistance</th>
                 <th>24h Volume (Sell)</th>
@@ -150,31 +160,29 @@
     <script>
         const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"]; // Assets to track
 
-        async function fetchOrderBook(symbol) {
+        async function fetchMarketData(symbol) {
             try {
-                const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`);
-                const data = await response.json();
+                const [orderBookRes, tickerRes] = await Promise.all([
+                    fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`),
+                    fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
+                ]);
+
+                const orderBookData = await orderBookRes.json();
+                const tickerData = await tickerRes.json();
+
                 return {
                     symbol,
-                    buySupport: parseFloat(data.bids[0][0]),  // Highest bid price
-                    buyResistance: parseFloat(data.bids[9][0]), // 10th highest bid
-                    sellSupport: parseFloat(data.asks[9][0]),  // 10th lowest ask
-                    sellResistance: parseFloat(data.asks[0][0]) // Lowest ask price
+                    buySupport: parseFloat(orderBookData.bids[0][0]),  // Highest bid price
+                    buyResistance: parseFloat(orderBookData.bids[9][0]), // 10th highest bid
+                    sellSupport: parseFloat(orderBookData.asks[9][0]),  // 10th lowest ask
+                    sellResistance: parseFloat(orderBookData.asks[0][0]), // Lowest ask price
+                    currentPrice: parseFloat(tickerData.lastPrice),  // Current market price
+                    priceChange: parseFloat(tickerData.priceChangePercent), // 24h price change %
+                    volume: parseFloat(tickerData.volume).toFixed(2) // 24-hour trading volume
                 };
             } catch (error) {
-                console.error(`Error fetching order book for ${symbol}:`, error);
+                console.error(`Error fetching market data for ${symbol}:`, error);
                 return null;
-            }
-        }
-
-        async function fetch24hVolume(symbol) {
-            try {
-                const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
-                const data = await response.json();
-                return parseFloat(data.volume).toFixed(2); // 24-hour volume
-            } catch (error) {
-                console.error(`Error fetching 24h volume for ${symbol}:`, error);
-                return "N/A";
             }
         }
 
@@ -182,11 +190,7 @@
             const tbody = document.querySelector("#tradingTable tbody");
             tbody.innerHTML = "";  // Clear table
 
-            const results = await Promise.all(assets.map(async (symbol) => {
-                const orderBookData = await fetchOrderBook(symbol);
-                const volume = await fetch24hVolume(symbol);
-                return { ...orderBookData, volume };
-            }));
+            const results = await Promise.all(assets.map(fetchMarketData)); // Fetch all market data
 
             const currentHour = new Date().getUTCHours();
             results.forEach((data, index) => {
@@ -196,10 +200,14 @@
                 row.innerHTML = `
                     <td>${(currentHour + index) % 24}:00</td>
                     <td class="buy">${data.symbol.replace("USDT", "")}</td>
+                    <td class="buy">$${data.currentPrice.toFixed(2)}</td>
+                    <td class="${data.priceChange >= 0 ? 'positive' : 'negative'}">${data.priceChange.toFixed(2)}%</td>
                     <td class="buy">$${data.buySupport.toFixed(2)}</td>
                     <td class="buy">$${data.buyResistance.toFixed(2)}</td>
                     <td class="buy">${data.volume}</td>
                     <td class="sell">${data.symbol.replace("USDT", "")}</td>
+                    <td class="sell">$${data.currentPrice.toFixed(2)}</td>
+                    <td class="${data.priceChange >= 0 ? 'positive' : 'negative'}">${data.priceChange.toFixed(2)}%</td>
                     <td class="sell">$${data.sellSupport.toFixed(2)}</td>
                     <td class="sell">$${data.sellResistance.toFixed(2)}</td>
                     <td class="sell">${data.volume}</td>
@@ -215,5 +223,4 @@
 
     </script>
 </body>
-                  </html>
-      
+</html>

@@ -2,150 +2,136 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Binance Live Order Book & 24h Stats</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>Binance Trading Signals with Zig Zag Indicator</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; vertical-align: middle; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
         th { background-color: #f0f0f0; }
-        .buy { background-color: #d4f8d4; color: green; font-weight: bold; }
-        .sell { background-color: #f8d4d4; color: red; font-weight: bold; }
         .positive { color: green; }
         .negative { color: red; }
-        caption { font-size: 1.2em; margin-bottom: 10px; font-weight: bold; }
-        canvas { max-width: 100%; margin-top: 20px; }
-        .like-dislike { display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .like-dislike button { background: none; border: none; cursor: pointer; font-size: 1.2em; }
-        .comments { margin-top: 10px; }
-        .comments textarea { width: 100%; height: 60px; }
+        #statistics, #comments { margin-top: 40px; }
     </style>
 </head>
 <body>
 
-    <h1>Live Binance Order Book Trading Signals</h1>
-    <p id="lastUpdated">Last updated: never</p>
+    <h1>Binance Trading Signals Based on Zig Zag Indicator</h1>
 
-    <!-- Chart Container -->
-    <canvas id="priceChart"></canvas>
-
+    <!-- Trading Signals Table -->
     <table id="tradingTable">
-        <caption>Hourly Buy/Sell Recommendations with 24h Stats</caption>
+        <caption>Trading Signals</caption>
         <thead>
             <tr>
-                <th>Hour (UTC)</th>
-                <th>Buy Asset</th>
-                <th>Current Price</th>
-                <th>24h Change</th>
-                <th>Buy Support</th>
-                <th>Buy Resistance</th>
-                <th>24h Volume (Buy)</th>
-                <th>Sell Asset</th>
-                <th>Current Price</th>
-                <th>24h Change</th>
-                <th>Sell Support</th>
-                <th>Sell Resistance</th>
-                <th>24h Volume (Sell)</th>
-                <th>Rationale</th>
-                <th>Feedback</th> <!-- New column for like/dislike buttons -->
-                <th>Comments</th> <!-- New column for comments -->
+                <th>Asset</th>
+                <th>Current Price (USDT)</th>
+                <th>24h Change (%)</th>
+                <th>Zig Zag Signal</th>
             </tr>
         </thead>
         <tbody>
-            <!-- Data updates every 15 minutes -->
+            <!-- Data will be populated here -->
         </tbody>
     </table>
 
+    <!-- Statistics Section -->
+    <div id="statistics">
+        <h2>Page Statistics</h2>
+        <p>Views: <span id="viewsCount">0</span></p>
+        <p>Impressions: <span id="impressionsCount">0</span></p>
+    </div>
+
+    <!-- Comments Section -->
+    <div id="comments">
+        <h2>Comments</h2>
+        <form id="commentForm">
+            <label for="commentText">Leave a comment:</label><br>
+            <textarea id="commentText" rows="4" cols="50"></textarea><br>
+            <button type="submit">Submit</button>
+        </form>
+        <ul id="commentsList">
+            <!-- Comments will appear here -->
+        </ul>
+    </div>
+
+    <!-- JavaScript to handle data fetching and DOM manipulation -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
+        // Placeholder for assets to monitor
         const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT"];
 
-        let chartData = {
-            labels: [],
-            datasets: assets.map(asset => ({
-                label: asset.replace("USDT", ""),
-                borderColor: getRandomColor(),
-                data: [],
-                fill: false
-            }))
-        };
-
-        let chartConfig = {
-            type: 'line',
-            data: chartData,
-            options: {
-                responsive: true,
-                scales: {
-                    x: { title: { display: true, text: 'Time (UTC)' } },
-                    y: { title: { display: true, text: 'Price (USDT)' } }
-                }
-            }
-        };
-
-        let priceChart = new Chart(document.getElementById('priceChart'), chartConfig);
-
-        function getRandomColor() {
-            return `hsl(${Math.random() * 360}, 100%, 50%)`;
-        }
-
+        // Function to fetch market data from Binance API
         async function fetchMarketData(symbol) {
             try {
-                const [orderBookRes, tickerRes] = await Promise.all([
-                    fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`),
-                    fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
-                ]);
-
-                const orderBookData = await orderBookRes.json();
-                const tickerData = await tickerRes.json();
-
-                return {
-                    symbol,
-                    buySupport: parseFloat(orderBookData.bids[0][0]),
-                    buyResistance: parseFloat(orderBookData.bids[9][0]),
-                    sellSupport: parseFloat(orderBookData.asks[9][0]),
-                    sellResistance: parseFloat(orderBookData.asks[0][0]),
-                    currentPrice: parseFloat(tickerData.lastPrice),
-                    priceChange: parseFloat(tickerData.priceChangePercent),
-                    volume: parseFloat(tickerData.volume).toFixed(2)
-                };
+                const response = await axios.get(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+                return response.data;
             } catch (error) {
-                console.error(`Error fetching market data for ${symbol}:`, error);
+                console.error(`Error fetching data for ${symbol}:`, error);
                 return null;
             }
         }
 
-        function determineRationale(data) {
-            if (!data) return "No data available";
-
-            let rationale = "";
-            if (data.priceChange > 1 && data.buySupport > data.sellSupport) {
-                rationale = "Strong bullish momentum with solid support.";
-            } else if (data.priceChange < -1 && data.sellResistance < data.buyResistance) {
-                rationale = "Bearish trend with weak resistance.";
-            } else if (data.volume > 500000) {
-                rationale = "High trading volume, potential breakout.";
-            } else {
-                rationale = "Neutral market conditions.";
-            }
-            return rationale;
+        // Function to calculate Zig Zag signal
+        function calculateZigZagSignal(data) {
+            // Implement Zig Zag calculation logic here
+            // For demonstration, we'll return a placeholder value
+            return "Buy"; // or "Sell" or "Hold"
         }
 
-        function createLikeDislikeButtons() {
-            const container = document.createElement('div');
-            container.className = 'like-dislike';
+        // Function to update the trading table
+        async function updateTradingTable() {
+            const tbody = document.querySelector("#tradingTable tbody");
+            tbody.innerHTML = ""; // Clear existing rows
 
-            const likeButton = document.createElement('button');
-            likeButton.innerHTML = '<i class="fas fa-thumbs-up"></i> <span>0</span>';
-            likeButton.onclick = () => updateCounter(likeButton);
+            for (const asset of assets) {
+                const data = await fetchMarketData(asset);
+                if (data) {
+                    const currentPrice = parseFloat(data.lastPrice).toFixed(2);
+                    const priceChange = parseFloat(data.priceChangePercent).toFixed(2);
+                    const zigZagSignal = calculateZigZagSignal(data);
 
-            const dislikeButton = document.createElement('button');
-            dislikeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> <span>0</span>';
-            dislikeButton.onclick = () => updateCounter(dislikeButton);
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${asset.replace("USDT", "")}</td>
+                        <td>${currentPrice}</td>
+                        <td class="${priceChange >= 0 ? 'positive' : 'negative'}">${priceChange}</td>
+                        <td>${zigZagSignal}</td>
+                    `;
+                    tbody.appendChild(row);
+                }
+            }
+        }
 
-            container.appendChild(likeButton);
-            container.appendChild(dislikeButton);
+        // Function to update page statistics
+        function updateStatistics() {
+            // Fetch and update views and impressions counts
+            // Placeholder implementation
+            const viewsCount = 100; // Replace with actual logic
+            const impressionsCount = 200; // Replace with actual logic
 
+            document.getElementById("viewsCount").textContent = viewsCount;
+            document.getElementById("impressionsCount").textContent = impressionsCount;
+        }
 
-::contentReference[oaicite:4]{index=4}
+        // Function to handle comment submission
+        function handleCommentSubmission(event) {
+            event.preventDefault();
+            const commentText = document.getElementById("commentText").value.trim();
+            if (commentText) {
+                const commentsList = document.getElementById("commentsList");
+                const commentItem = document.createElement("li");
+                commentItem.textContent = commentText;
+                commentsList.appendChild(commentItem);
+                document.getElementById("commentText").value = ""; // Clear textarea
+            }
+        }
 
-    
+        // Event listener for comment form submission
+        document.getElementById("commentForm").addEventListener("submit", handleCommentSubmission);
+
+        // Initial data fetch and setup
+        updateTradingTable();
+        updateStatistics();
+        setInterval(updateTradingTable, 900000); // Update every 15 minutes
+    </script>
+</body>
+</html>

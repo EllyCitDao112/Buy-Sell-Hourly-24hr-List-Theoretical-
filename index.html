@@ -4,15 +4,21 @@
     <meta charset="UTF-8">
     <title>Binance Live Order Book & 24h Stats</title>
     <style>
+        /* Your existing CSS styles */
         body { font-family: Arial, sans-serif; margin: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
         th { background-color: #f0f0f0; }
-        .buy { background-color: #d4f8d4; color: green; font-weight: bold; } /* Green Buy */
-        .sell { background-color: #f8d4d4; color: red; font-weight: bold; }  /* Red Sell */
-        .positive { color: green; }  /* Positive price change */
-        .negative { color: red; }    /* Negative price change */
+        .buy { background-color: #d4f8d4; color: green; font-weight: bold; }
+        .sell { background-color: #f8d4d4; color: red; font-weight: bold; }
+        .positive { color: green; }
+        .negative { color: red; }
         caption { font-size: 1.2em; margin-bottom: 10px; font-weight: bold; }
+        /* Additional styles for statistics and comments */
+        #statistics { margin-top: 20px; }
+        #commentsSection { margin-top: 20px; }
+        #commentsList { margin-top: 10px; }
+        .comment { border-bottom: 1px solid #ccc; padding: 5px 0; }
     </style>
 </head>
 <body>
@@ -20,6 +26,7 @@
     <h1>Live Binance Order Book Trading Signals</h1>
     <p id="lastUpdated">Last updated: never</p>
 
+    <!-- Trading Table -->
     <table id="tradingTable">
         <caption>Hourly Buy/Sell Recommendations with 24h Stats</caption>
         <thead>
@@ -42,91 +49,83 @@
         </tbody>
     </table>
 
+    <!-- Statistics Section -->
+    <div id="statistics">
+        <h2>Page Statistics</h2>
+        <p>Visits: <span id="visitCount">0</span></p>
+        <p>Views: <span id="viewCount">0</span></p>
+        <p>Impressions: <span id="impressionCount">0</span></p>
+    </div>
+
+    <!-- Comments Section -->
+    <div id="commentsSection">
+        <h2>User Comments</h2>
+        <div id="commentsList">
+            <!-- User comments will appear here -->
+        </div>
+        <textarea id="commentInput" placeholder="Enter your comment here..." rows="4" cols="50"></textarea><br>
+        <button onclick="addComment()">Submit Comment</button>
+    </div>
+
     <script>
-        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"]; // Assets to track
+        // Function to update statistics
+        function updateStatistics() {
+            // Retrieve counts from localStorage or initialize to 0
+            let visits = parseInt(localStorage.getItem('visits')) || 0;
+            let views = parseInt(localStorage.getItem('views')) || 0;
+            let impressions = parseInt(localStorage.getItem('impressions')) || 0;
 
-        async function fetchMarketData(symbol) {
-            try {
-                const [orderBookRes, tickerRes] = await Promise.all([
-                    fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`),
-                    fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
-                ]);
+            // Increment counts
+            visits++;
+            views++;
+            impressions++;
 
-                const orderBookData = await orderBookRes.json();
-                const tickerData = await tickerRes.json();
+            // Update localStorage
+            localStorage.setItem('visits', visits);
+            localStorage.setItem('views', views);
+            localStorage.setItem('impressions', impressions);
 
-                return {
-                    symbol,
-                    buySupport: parseFloat(orderBookData.bids[0][0]),  // Highest bid price
-                    sellResistance: parseFloat(orderBookData.asks[0][0]), // Lowest ask price
-                    currentPrice: parseFloat(tickerData.lastPrice),  // Current market price
-                    priceChange: parseFloat(tickerData.priceChangePercent), // 24h price change %
-                    highPrice: parseFloat(tickerData.highPrice), // 24h high price
-                    lowPrice: parseFloat(tickerData.lowPrice), // 24h low price
-                    volume: parseFloat(tickerData.volume).toFixed(2) // 24-hour trading volume
-                };
-            } catch (error) {
-                console.error(`Error fetching market data for ${symbol}:`, error);
-                return null;
-            }
+            // Update HTML
+            document.getElementById('visitCount').textContent = visits;
+            document.getElementById('viewCount').textContent = views;
+            document.getElementById('impressionCount').textContent = impressions;
         }
 
-        function determineRecommendation(data) {
-            // Example logic for Zig Zag-based recommendation
-            const priceRange = data.highPrice - data.lowPrice;
-            const threshold = 0.05 * data.currentPrice; // 5% threshold for Zig Zag
-            let recommendation = 'Hold';
-            let rationale = 'Price movement is within normal range.';
-
-            if (priceRange > threshold) {
-                if (data.currentPrice < (data.lowPrice + threshold)) {
-                    recommendation = 'Buy';
-                    rationale = 'Significant price drop detected; potential reversal opportunity.';
-                } else if (data.currentPrice > (data.highPrice - threshold)) {
-                    recommendation = 'Sell';
-                    rationale = 'Significant price rise detected; potential reversal opportunity.';
-                }
-            }
-
-            return { recommendation, rationale };
-        }
-
-        async function updateTradingTable() {
-            const tbody = document.querySelector("#tradingTable tbody");
-            tbody.innerHTML = "";  // Clear table
-
-            const results = await Promise.all(assets.map(fetchMarketData)); // Fetch all market data
-
-            const currentHour = new Date().getUTCHours();
-            results.forEach((data, index) => {
-                if (!data) return;  // Skip if error
-
-                const { recommendation, rationale } = determineRecommendation(data);
-                const row = document.createElement("tr");
-                row.className = recommendation.toLowerCase(); // Apply 'buy' or 'sell' class for color coding
-                row.innerHTML = `
-                    <td>${(currentHour + index) % 24}:00</td>
-                    <td>${data.symbol.replace("USDT", "")}</td>
-                    <td>$${data.currentPrice.toFixed(2)}</td>
-                    <td class="${data.priceChange >= 0 ? 'positive' : 'negative'}">${data.priceChange.toFixed(2)}%</td>
-                    <td>$${data.highPrice.toFixed(2)}</td>
-                    <td>$${data.lowPrice.toFixed(2)}</td>
-                    <td>$${data.buySupport.toFixed(2)}</td>
-                    <td>$${data.sellResistance.toFixed(2)}</td>
-                    <td>${data.volume}</td>
-                    <td>${recommendation}</td>
-                    <td>${rationale}</td>
-                `;
-                tbody.appendChild(row);
+        // Function to load comments from localStorage
+        function loadComments() {
+            const comments = JSON.parse(localStorage.getItem('comments')) || [];
+            const commentsList = document.getElementById('commentsList');
+            commentsList.innerHTML = ''; // Clear existing comments
+            comments.forEach(comment => {
+                const commentDiv = document.createElement('div');
+                commentDiv.className = 'comment';
+                commentDiv.textContent = comment;
+                commentsList.appendChild(commentDiv);
             });
-
-            document.getElementById("lastUpdated").textContent = "Last updated: " + new Date().toLocaleString();
         }
 
-        updateTradingTable(); // Initial data load
-        setInterval(updateTradingTable, 900000); // Update every 15 minutes
+        // Function to add a new comment
+        function addComment() {
+            const commentInput = document.getElementById('commentInput');
+            const commentText = commentInput.value.trim();
+            if (commentText) {
+                // Retrieve existing comments
+                const comments = JSON.parse(localStorage.getItem('comments')) || [];
+                // Add new comment
+                comments.push(commentText);
+                // Save updated comments to localStorage
+                localStorage.setItem('comments', JSON.stringify(comments));
+                // Reload comments
+                loadComments();
+                // Clear input
+                commentInput.value = '';
+            }
+        }
 
+        // Call functions on page load
+        updateStatistics();
+        loadComments();
     </script>
 </body>
-    </html>
-    
+        </html>
+        

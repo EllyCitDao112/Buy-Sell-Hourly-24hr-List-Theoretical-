@@ -2,136 +2,116 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Binance Trading Signals with Zig Zag Indicator</title>
+    <title>Binance Live Order Book & 24h Stats</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
         th { background-color: #f0f0f0; }
+        .buy { background-color: #d4f8d4; color: green; font-weight: bold; }
+        .sell { background-color: #f8d4d4; color: red; font-weight: bold; }
+        .hold { background-color: #f0f0f0; color: gray; font-weight: bold; }
         .positive { color: green; }
         .negative { color: red; }
-        #statistics, #comments { margin-top: 40px; }
+        caption { font-size: 1.2em; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>Binance Trading Signals Based on Zig Zag Indicator</h1>
+    <h1>Live Binance Order Book Trading Signals</h1>
+    <p id="lastUpdated">Last updated: never</p>
 
-    <!-- Trading Signals Table -->
     <table id="tradingTable">
-        <caption>Trading Signals</caption>
+        <caption>Hourly Buy/Sell Recommendations with 24h Stats</caption>
         <thead>
             <tr>
+                <th>Hour (UTC)</th>
                 <th>Asset</th>
-                <th>Current Price (USDT)</th>
-                <th>24h Change (%)</th>
-                <th>Zig Zag Signal</th>
+                <th>Current Price</th>
+                <th>24h Change</th>
+                <th>24h High Price</th>
+                <th>24h Low Price</th>
+                <th>Buy Support</th>
+                <th>Buy Resistance</th>
+                <th>Sell Support</th>
+                <th>Sell Resistance</th>
+                <th>24h Volume</th>
+                <th>Alligator Signal</th>
             </tr>
         </thead>
         <tbody>
-            <!-- Data will be populated here -->
+            <!-- Data updates every 15 minutes -->
         </tbody>
     </table>
 
-    <!-- Statistics Section -->
-    <div id="statistics">
-        <h2>Page Statistics</h2>
-        <p>Views: <span id="viewsCount">0</span></p>
-        <p>Impressions: <span id="impressionsCount">0</span></p>
-    </div>
-
-    <!-- Comments Section -->
-    <div id="comments">
-        <h2>Comments</h2>
-        <form id="commentForm">
-            <label for="commentText">Leave a comment:</label><br>
-            <textarea id="commentText" rows="4" cols="50"></textarea><br>
-            <button type="submit">Submit</button>
-        </form>
-        <ul id="commentsList">
-            <!-- Comments will appear here -->
-        </ul>
-    </div>
-
-    <!-- JavaScript to handle data fetching and DOM manipulation -->
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
-        // Placeholder for assets to monitor
-        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT"];
+        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"];
 
-        // Function to fetch market data from Binance API
         async function fetchMarketData(symbol) {
             try {
-                const response = await axios.get(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
-                return response.data;
+                const [orderBookRes, tickerRes] = await Promise.all([
+                    fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`),
+                    fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
+                ]);
+
+                const orderBookData = await orderBookRes.json();
+                const tickerData = await tickerRes.json();
+
+                // Placeholder for Alligator Signal calculation
+                const alligatorSignal = 'Hold'; // This should be replaced with actual calculation logic
+
+                return {
+                    symbol,
+                    buySupport: parseFloat(orderBookData.bids[0][0]),
+                    buyResistance: parseFloat(orderBookData.bids[9][0]),
+                    sellSupport: parseFloat(orderBookData.asks[9][0]),
+                    sellResistance: parseFloat(orderBookData.asks[0][0]),
+                    currentPrice: parseFloat(tickerData.lastPrice),
+                    priceChange: parseFloat(tickerData.priceChangePercent),
+                    highPrice: parseFloat(tickerData.highPrice),
+                    lowPrice: parseFloat(tickerData.lowPrice),
+                    volume: parseFloat(tickerData.volume).toFixed(2),
+                    alligatorSignal
+                };
             } catch (error) {
-                console.error(`Error fetching data for ${symbol}:`, error);
+                console.error(`Error fetching market data for ${symbol}:`, error);
                 return null;
             }
         }
 
-        // Function to calculate Zig Zag signal
-        function calculateZigZagSignal(data) {
-            // Implement Zig Zag calculation logic here
-            // For demonstration, we'll return a placeholder value
-            return "Buy"; // or "Sell" or "Hold"
-        }
-
-        // Function to update the trading table
         async function updateTradingTable() {
             const tbody = document.querySelector("#tradingTable tbody");
-            tbody.innerHTML = ""; // Clear existing rows
+            tbody.innerHTML = "";
 
-            for (const asset of assets) {
-                const data = await fetchMarketData(asset);
-                if (data) {
-                    const currentPrice = parseFloat(data.lastPrice).toFixed(2);
-                    const priceChange = parseFloat(data.priceChangePercent).toFixed(2);
-                    const zigZagSignal = calculateZigZagSignal(data);
+            const results = await Promise.all(assets.map(fetchMarketData));
 
-                    const row = document.createElement("tr");
-                    row.innerHTML = `
-                        <td>${asset.replace("USDT", "")}</td>
-                        <td>${currentPrice}</td>
-                        <td class="${priceChange >= 0 ? 'positive' : 'negative'}">${priceChange}</td>
-                        <td>${zigZagSignal}</td>
-                    `;
-                    tbody.appendChild(row);
-                }
-            }
+            const currentHour = new Date().getUTCHours();
+            results.forEach((data, index) => {
+                if (!data) return;
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${(currentHour + index) % 24}:00</td>
+                    <td>${data.symbol.replace("USDT", "")}</td>
+                    <td>$${data.currentPrice.toFixed(2)}</td>
+                    <td class="${data.priceChange >= 0 ? 'positive' : 'negative'}">${data.priceChange.toFixed(2)}%</td>
+                    <td>$${data.highPrice.toFixed(2)}</td>
+                    <td>$${data.lowPrice.toFixed(2)}</td>
+                    <td>$${data.buySupport.toFixed(2)}</td>
+                    <td>$${data.buyResistance.toFixed(2)}</td>
+                    <td>$${data.sellSupport.toFixed(2)}</td>
+                    <td>$${data.sellResistance.toFixed(2)}</td>
+                    <td>${data.volume}</td>
+                    <td class="${data.alligatorSignal.toLowerCase()}">${data.alligatorSignal}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById("lastUpdated").textContent = "Last updated: " + new Date().toLocaleString();
         }
 
-        // Function to update page statistics
-        function updateStatistics() {
-            // Fetch and update views and impressions counts
-            // Placeholder implementation
-            const viewsCount = 100; // Replace with actual logic
-            const impressionsCount = 200; // Replace with actual logic
-
-            document.getElementById("viewsCount").textContent = viewsCount;
-            document.getElementById("impressionsCount").textContent = impressionsCount;
-        }
-
-        // Function to handle comment submission
-        function handleCommentSubmission(event) {
-            event.preventDefault();
-            const commentText = document.getElementById("commentText").value.trim();
-            if (commentText) {
-                const commentsList = document.getElementById("commentsList");
-                const commentItem = document.createElement("li");
-                commentItem.textContent = commentText;
-                commentsList.appendChild(commentItem);
-                document.getElementById("commentText").value = ""; // Clear textarea
-            }
-        }
-
-        // Event listener for comment form submission
-        document.getElementById("commentForm").addEventListener("submit", handleCommentSubmission);
-
-        // Initial data fetch and setup
         updateTradingTable();
-        updateStatistics();
-        setInterval(updateTradingTable, 900000); // Update every 15 minutes
+        setInterval(updateTradingTable, 900000);
     </script>
 </body>
 </html>

@@ -8,11 +8,10 @@
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
         th { background-color: #f0f0f0; }
-        .buy { background-color: #d4f8d4; color: green; font-weight: bold; }
-        .sell { background-color: #f8d4d4; color: red; font-weight: bold; }
-        .hold { background-color: #f0f0f0; color: gray; font-weight: bold; }
-        .positive { color: green; }
-        .negative { color: red; }
+        .buy { background-color: #d4f8d4; color: green; font-weight: bold; } /* Green Buy */
+        .sell { background-color: #f8d4d4; color: red; font-weight: bold; }  /* Red Sell */
+        .positive { color: green; }  /* Positive price change */
+        .negative { color: red; }    /* Negative price change */
         caption { font-size: 1.2em; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
@@ -29,14 +28,13 @@
                 <th>Asset</th>
                 <th>Current Price</th>
                 <th>24h Change</th>
-                <th>24h High Price</th>
-                <th>24h Low Price</th>
+                <th>24h High</th>
+                <th>24h Low</th>
                 <th>Buy Support</th>
-                <th>Buy Resistance</th>
-                <th>Sell Support</th>
                 <th>Sell Resistance</th>
                 <th>24h Volume</th>
-                <th>Alligator Signal</th>
+                <th>Recommendation</th>
+                <th>Rationale</th>
             </tr>
         </thead>
         <tbody>
@@ -45,7 +43,7 @@
     </table>
 
     <script>
-        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"];
+        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"]; // Assets to track
 
         async function fetchMarketData(symbol) {
             try {
@@ -57,21 +55,15 @@
                 const orderBookData = await orderBookRes.json();
                 const tickerData = await tickerRes.json();
 
-                // Placeholder for Alligator Signal calculation
-                const alligatorSignal = 'Hold'; // This should be replaced with actual calculation logic
-
                 return {
                     symbol,
-                    buySupport: parseFloat(orderBookData.bids[0][0]),
-                    buyResistance: parseFloat(orderBookData.bids[9][0]),
-                    sellSupport: parseFloat(orderBookData.asks[9][0]),
-                    sellResistance: parseFloat(orderBookData.asks[0][0]),
-                    currentPrice: parseFloat(tickerData.lastPrice),
-                    priceChange: parseFloat(tickerData.priceChangePercent),
-                    highPrice: parseFloat(tickerData.highPrice),
-                    lowPrice: parseFloat(tickerData.lowPrice),
-                    volume: parseFloat(tickerData.volume).toFixed(2),
-                    alligatorSignal
+                    buySupport: parseFloat(orderBookData.bids[0][0]),  // Highest bid price
+                    sellResistance: parseFloat(orderBookData.asks[0][0]), // Lowest ask price
+                    currentPrice: parseFloat(tickerData.lastPrice),  // Current market price
+                    priceChange: parseFloat(tickerData.priceChangePercent), // 24h price change %
+                    highPrice: parseFloat(tickerData.highPrice), // 24h high price
+                    lowPrice: parseFloat(tickerData.lowPrice), // 24h low price
+                    volume: parseFloat(tickerData.volume).toFixed(2) // 24-hour trading volume
                 };
             } catch (error) {
                 console.error(`Error fetching market data for ${symbol}:`, error);
@@ -79,17 +71,39 @@
             }
         }
 
+        function determineRecommendation(data) {
+            // Example logic for Zig Zag-based recommendation
+            const priceRange = data.highPrice - data.lowPrice;
+            const threshold = 0.05 * data.currentPrice; // 5% threshold for Zig Zag
+            let recommendation = 'Hold';
+            let rationale = 'Price movement is within normal range.';
+
+            if (priceRange > threshold) {
+                if (data.currentPrice < (data.lowPrice + threshold)) {
+                    recommendation = 'Buy';
+                    rationale = 'Significant price drop detected; potential reversal opportunity.';
+                } else if (data.currentPrice > (data.highPrice - threshold)) {
+                    recommendation = 'Sell';
+                    rationale = 'Significant price rise detected; potential reversal opportunity.';
+                }
+            }
+
+            return { recommendation, rationale };
+        }
+
         async function updateTradingTable() {
             const tbody = document.querySelector("#tradingTable tbody");
-            tbody.innerHTML = "";
+            tbody.innerHTML = "";  // Clear table
 
-            const results = await Promise.all(assets.map(fetchMarketData));
+            const results = await Promise.all(assets.map(fetchMarketData)); // Fetch all market data
 
             const currentHour = new Date().getUTCHours();
             results.forEach((data, index) => {
-                if (!data) return;
+                if (!data) return;  // Skip if error
 
+                const { recommendation, rationale } = determineRecommendation(data);
                 const row = document.createElement("tr");
+                row.className = recommendation.toLowerCase(); // Apply 'buy' or 'sell' class for color coding
                 row.innerHTML = `
                     <td>${(currentHour + index) % 24}:00</td>
                     <td>${data.symbol.replace("USDT", "")}</td>
@@ -98,11 +112,10 @@
                     <td>$${data.highPrice.toFixed(2)}</td>
                     <td>$${data.lowPrice.toFixed(2)}</td>
                     <td>$${data.buySupport.toFixed(2)}</td>
-                    <td>$${data.buyResistance.toFixed(2)}</td>
-                    <td>$${data.sellSupport.toFixed(2)}</td>
                     <td>$${data.sellResistance.toFixed(2)}</td>
                     <td>${data.volume}</td>
-                    <td class="${data.alligatorSignal.toLowerCase()}">${data.alligatorSignal}</td>
+                    <td>${recommendation}</td>
+                    <td>${rationale}</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -110,8 +123,10 @@
             document.getElementById("lastUpdated").textContent = "Last updated: " + new Date().toLocaleString();
         }
 
-        updateTradingTable();
-        setInterval(updateTradingTable, 900000);
+        updateTradingTable(); // Initial data load
+        setInterval(updateTradingTable, 900000); // Update every 15 minutes
+
     </script>
 </body>
-</html>
+    </html>
+    

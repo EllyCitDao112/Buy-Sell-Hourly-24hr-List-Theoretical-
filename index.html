@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Binance Live Order Book & 24h Stats</title>
+    <title>Binance Trading Signals with Zig Zag Indicator</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -17,74 +17,44 @@
 </head>
 <body>
 
-    <h1>Live Binance Order Book Trading Signals</h1>
+    <h1>Binance Trading Signals with Zig Zag Indicator</h1>
     <p id="lastUpdated">Last updated: never</p>
 
     <table id="tradingTable">
-        <caption>Hourly Buy/Sell Recommendations with 24h Stats</caption>
+        <caption>Buy/Sell Recommendations with 24h Stats</caption>
         <thead>
             <tr>
-                <th>Hour (UTC)</th>
                 <th>Asset</th>
                 <th>Current Price</th>
                 <th>24h Change</th>
                 <th>24h High</th>
                 <th>24h Low</th>
-                <th>Buy Support</th>
-                <th>Sell Resistance</th>
                 <th>24h Volume</th>
                 <th>Recommendation</th>
                 <th>Rationale</th>
             </tr>
         </thead>
         <tbody>
-            <!-- Data updates every 15 minutes -->
+            <!-- Data will be populated here -->
         </tbody>
     </table>
 
-    <h2>Statistics</h2>
-    <p id="statistics"></p>
-
-    <h2>Comments</h2>
-    <textarea id="commentSection" rows="5" cols="60" placeholder="Enter your comment..."></textarea><br>
-    <button onclick="submitComment()">Submit Comment</button>
-
     <script>
-        const zigZagThreshold = 0.05; // 5% threshold for Zig Zag
+        // List of assets to track
+        const assets = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "DOTUSDT", "MATICUSDT"];
 
-        async function fetchTopTradedAssets() {
-            try {
-                const response = await fetch('https://api.binance.com/api/v3/ticker/24hr');
-                const data = await response.json();
-                // Sort assets by 24h volume in descending order
-                data.sort((a, b) => parseFloat(b.volume) - parseFloat(a.volume));
-                // Return top 10 assets
-                return data.slice(0, 10).map(asset => asset.symbol);
-            } catch (error) {
-                console.error('Error fetching top traded assets:', error);
-                return [];
-            }
-        }
-
+        // Function to fetch market data for a given symbol
         async function fetchMarketData(symbol) {
             try {
-                const [orderBookRes, tickerRes] = await Promise.all([
-                    fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=10`),
-                    fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
-                ]);
-
-                const orderBookData = await orderBookRes.json();
-                const tickerData = await tickerRes.json();
-
+                const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+                const data = await response.json();
                 return {
                     symbol,
-                    buySupport: parseFloat(orderBookData.bids[0][0]),  // Highest bid price
-                    sellResistance: parseFloat(orderBookData.asks[0][0]), // Lowest ask price
-                    currentPrice: parseFloat(tickerData.lastPrice),  // Current market price
-                    priceChange: parseFloat(tickerData.priceChangePercent), // 24h price change %
-                    highPrice: parseFloat(tickerData.highPrice), // 24h high price
-                    lowPrice: parseFloat(tickerData.lowPrice), // 24h low price
-                    volume: parseFloat(tickerData.volume).toFixed(2) // 24-hour trading volume
+                    currentPrice: parseFloat(data.lastPrice),
+                    priceChange: parseFloat(data.priceChangePercent),
+                    highPrice: parseFloat(data.highPrice),
+                    lowPrice: parseFloat(data.lowPrice),
+                    volume: parseFloat(data.volume)
                 };
             } catch (error) {
                 console.error(`Error fetching market data for ${symbol}:`, error);
@@ -92,9 +62,10 @@
             }
         }
 
+        // Function to determine buy/sell recommendation based on Zig Zag indicator logic
         function determineRecommendation(data) {
             const priceRange = data.highPrice - data.lowPrice;
-            const threshold = zigZagThreshold * data.currentPrice;
+            const threshold = 0.05 * data.currentPrice; // 5% threshold for Zig Zag
             let recommendation = 'Hold';
             let rationale = 'Price movement is within normal range.';
 
@@ -111,18 +82,41 @@
             return { recommendation, rationale };
         }
 
+        // Function to update the trading table with fetched data
         async function updateTradingTable() {
             const tbody = document.querySelector("#tradingTable tbody");
-            tbody.innerHTML = "";  // Clear table
+            tbody.innerHTML = "";  // Clear existing table data
 
-            const assets = await fetchTopTradedAssets(); // Fetch top traded assets
-            const results = await Promise.all(assets.map(fetchMarketData)); // Fetch market data
+            const results = await Promise.all(assets.map(fetchMarketData)); // Fetch data for all assets
 
-            const currentHour = new Date().getUTCHours();
-            results.forEach((data, index) => {
-                if (!data) return;  // Skip if error
+            results.forEach((data) => {
+                if (!data) return;  // Skip if data fetch failed
 
                 const { recommendation, rationale } = determineRecommendation(data);
                 const row = document.createElement("tr");
-                row
+                row.className = recommendation.toLowerCase(); // Apply 'buy' or 'sell' class for color coding
+                row.innerHTML = `
+                    <td>${data.symbol.replace("USDT", "")}</td>
+                    <td>$${data.currentPrice.toFixed(2)}</td>
+                    <td class="${data.priceChange >= 0 ? 'positive' : 'negative'}">${data.priceChange.toFixed(2)}%</td>
+                    <td>$${data.highPrice.toFixed(2)}</td>
+                    <td>$${data.lowPrice.toFixed(2)}</td>
+                    <td>${data.volume.toFixed(2)}</td>
+                    <td>${recommendation}</td>
+                    <td>${rationale}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById("lastUpdated").textContent = "Last updated: " + new Date().toLocaleString();
+        }
+
+        // Initial data load
+        updateTradingTable();
+        // Update data every 15 minutes
+        setInterval(updateTradingTable, 900000);
+    </script>
+
+</body>
+                             </html>
     
